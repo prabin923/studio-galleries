@@ -1,0 +1,199 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Auth.js adapter models ----------
+
+model User {
+  id            String       @id @default(cuid())
+  email         String       @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  accounts      Account[]
+  sessions      Session[]
+  memberships   Membership[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------- Tenancy ----------
+
+model Studio {
+  id          String             @id @default(cuid())
+  name        String
+  slug        String             @unique
+  createdAt   DateTime           @default(now())
+  memberships Membership[]
+  galleries   Gallery[]
+  storage     StorageConnection?
+}
+
+model Membership {
+  id       String @id @default(cuid())
+  userId   String
+  studioId String
+  role     Role   @default(OWNER)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studio   Studio @relation(fields: [studioId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, studioId])
+}
+
+enum Role {
+  OWNER
+  MEMBER
+}
+
+// ---------- Storage ----------
+
+model StorageConnection {
+  id              String        @id @default(cuid())
+  studioId        String        @unique
+  provider        String        @default("google_drive")
+  googleEmail     String
+  refreshTokenEnc String
+  accessTokenEnc  String?
+  accessExpiresAt DateTime?
+  rootFolderId    String
+  status          StorageStatus @default(ACTIVE)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  studio          Studio        @relation(fields: [studioId], references: [id], onDelete: Cascade)
+}
+
+enum StorageStatus {
+  ACTIVE
+  REVOKED
+  ERROR
+}
+
+// ---------- Galleries & files ----------
+
+model Gallery {
+  id            String        @id @default(cuid())
+  studioId      String
+  title         String
+  description   String?
+  eventDate     DateTime?
+  status        GalleryStatus @default(DRAFT)
+  driveFolderId String?
+  coverFileId   String?
+  allowDownload Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  studio        Studio        @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  files         File[]
+  shareLinks    ShareLink[]
+
+  @@index([studioId, createdAt])
+}
+
+enum GalleryStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model File {
+  id          String     @id @default(cuid())
+  galleryId   String
+  studioId    String
+  filename    String
+  mimeType    String
+  sizeBytes   BigInt
+  width       Int?
+  height      Int?
+  takenAt     DateTime?
+  driveFileId String?
+  status      FileStatus @default(UPLOADING)
+  sortOrder   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  gallery     Gallery    @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  favorites   Favorite[]
+
+  @@index([galleryId, sortOrder])
+  @@index([studioId])
+}
+
+enum FileStatus {
+  UPLOADING
+  READY
+  FAILED
+  MISSING
+}
+
+// ---------- Sharing & selection ----------
+
+model ShareLink {
+  id             String          @id @default(cuid())
+  galleryId      String
+  token          String          @unique
+  label          String?
+  passwordHash   String?
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  selectionLimit Int?
+  allowDownload  Boolean         @default(true)
+  viewCount      Int             @default(0)
+  createdAt      DateTime        @default(now())
+  gallery        Gallery         @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  sessions       ClientSession[]
+}
+
+model ClientSession {
+  id          String     @id @default(cuid())
+  shareLinkId String
+  displayName String?
+  createdAt   DateTime   @default(now())
+  lastSeenAt  DateTime   @default(now())
+  shareLink   ShareLink  @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  favorites   Favorite[]
+}
+
+model Favorite {
+  id              String        @id @default(cuid())
+  clientSessionId String
+  fileId          String
+  createdAt       DateTime      @default(now())
+  session         ClientSession @relation(fields: [clientSessionId], references: [id], onDelete: Cascade)
+  file            File          @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@unique([clientSessionId, fileId])
+}
