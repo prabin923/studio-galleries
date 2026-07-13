@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getStudioContext } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getStorageForStudio } from "@/lib/storage";
+import { getStorage } from "@/lib/storage";
 
 const bodySchema = z.object({
   fileId: z.string().min(1),
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   if (!file) return NextResponse.json({ error: "file_not_found" }, { status: 404 });
   if (file.status === "READY") return NextResponse.json({ ok: true });
 
-  const { provider } = await getStorageForStudio(ctx.studio.id);
+  const { provider } = await getStorage();
 
   // Trust nothing from the browser: confirm the file really landed in Drive
   let meta;

@@ -22,7 +22,23 @@ export type StudioContext = {
   user: { id: string; email: string; name: string | null; image: string | null };
   studio: { id: string; name: string; slug: string };
   role: "OWNER" | "MEMBER";
+  /** Platform admin — may manage the central storage connection */
+  isAdmin: boolean;
 };
+
+/**
+ * Platform admins come from ADMIN_EMAILS (comma-separated). If unset, every
+ * signed-in user is treated as admin — acceptable for local dev only.
+ */
+export function isAdminEmail(email: string): boolean {
+  const list = process.env.ADMIN_EMAILS;
+  if (!list) return true;
+  return list
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+    .includes(email.toLowerCase());
+}
 
 function slugify(input: string): string {
   const base = input
@@ -50,22 +66,38 @@ export async function getStudioContext(): Promise<StudioContext | null> {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    include: { memberships: { include: { studio: true } } },
+    include: {
+      memberships: {
+        include: { studio: true },
+        orderBy: { studio: { createdAt: "asc" } },
+      },
+    },
   });
   if (!user) return null;
 
   let membership = user.memberships[0];
   if (!membership) {
-    const name = user.name ? `${user.name}'s Studio` : "My Studio";
-    membership = await prisma.membership.create({
-      data: {
-        role: "OWNER",
-        user: { connect: { id: user.id } },
-        studio: {
-          create: { name, slug: slugify(user.name ?? user.email.split("@")[0]) },
+    // Layout and page render concurrently, so first-login provisioning can
+    // race with itself — serialize it with a per-user advisory lock
+    membership = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${user.id}))`;
+      const existing = await tx.membership.findFirst({
+        where: { userId: user.id },
+        include: { studio: true },
+        orderBy: { studio: { createdAt: "asc" } },
+      });
+      if (existing) return existing;
+      const name = user.name ? `${user.name}'s Studio` : "My Studio";
+      return tx.membership.create({
+        data: {
+          role: "OWNER",
+          user: { connect: { id: user.id } },
+          studio: {
+            create: { name, slug: slugify(user.name ?? user.email.split("@")[0]) },
+          },
         },
-      },
-      include: { studio: true },
+        include: { studio: true },
+      });
     });
   }
 
@@ -77,5 +109,6 @@ export async function getStudioContext(): Promise<StudioContext | null> {
       slug: membership.studio.slug,
     },
     role: membership.role,
+    isAdmin: isAdminEmail(user.email),
   };
 }

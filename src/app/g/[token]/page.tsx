@@ -54,7 +54,7 @@ export default async function PublicGalleryPage({
   if (!claims) redirect(`/g/${token}/enter`);
   if (link.passwordHash && !claims.pwOk) redirect(`/g/${token}/password`);
 
-  const [gallery, favorites, clientSession] = await Promise.all([
+  const [gallery, favorites, clientSession, comments] = await Promise.all([
     prisma.gallery.findUnique({
       where: { id: link.galleryId },
       include: {
@@ -74,11 +74,25 @@ export default async function PublicGalleryPage({
       where: { id: claims.sid },
       select: { displayName: true },
     }),
+    prisma.comment.findMany({
+      where: { clientSessionId: claims.sid },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, fileId: true, text: true, createdAt: true },
+    }),
   ]);
   if (!gallery) redirect(`/g/${token}/enter`);
 
   const favoriteIds = new Set(favorites.map((f) => f.fileId));
   const allowDownload = gallery.allowDownload && link.allowDownload;
+
+  const commentsByFile: Record<string, { id: string; text: string; createdAt: string }[]> = {};
+  for (const c of comments) {
+    (commentsByFile[c.fileId] ??= []).push({
+      id: c.id,
+      text: c.text,
+      createdAt: c.createdAt.toISOString(),
+    });
+  }
 
   const items = gallery.files.map((f) => ({
     id: f.id,
@@ -89,17 +103,25 @@ export default async function PublicGalleryPage({
     favorited: favoriteIds.has(f.id),
   }));
 
+  const coverId =
+    gallery.coverFileId && gallery.files.some((f) => f.id === gallery.coverFileId)
+      ? gallery.coverFileId
+      : gallery.files[0]?.id ?? null;
+
   return (
     <ClientGallery
       token={token}
       studioName={gallery.studio.name}
       galleryTitle={gallery.title}
       galleryDescription={gallery.description}
+      eventDate={gallery.eventDate ? gallery.eventDate.toISOString().slice(0, 10) : null}
+      coverSrc={coverId ? signedImagePath(coverId, "web") : null}
       items={items}
       selectionLimit={link.selectionLimit}
       initialCount={favoriteIds.size}
       allowDownload={allowDownload}
       initialDisplayName={clientSession?.displayName ?? null}
+      initialComments={commentsByFile}
     />
   );
 }

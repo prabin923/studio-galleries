@@ -4,12 +4,12 @@ import { requireStudio } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { signedImagePath } from "@/lib/crypto";
 import {
-  deleteFile,
   deleteGallery,
   reapStaleUploads,
   updateGalleryStatus,
 } from "@/actions/galleries";
 import Uploader from "@/components/uploader/Uploader";
+import ManageGrid from "@/components/dashboard/ManageGrid";
 
 export default async function GalleryPage({
   params,
@@ -90,45 +90,19 @@ export default async function GalleryPage({
       </div>
 
       {gallery.files.length > 0 && (
-        <ul className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {gallery.files.map((f) => (
-            <li key={f.id} className="group relative">
-              <div className="aspect-square overflow-hidden rounded-lg bg-zinc-100">
-                {f.status === "READY" ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={signedImagePath(f.id, "thumb")}
-                    alt={f.filename}
-                    loading="lazy"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center px-2 text-center text-xs text-zinc-400">
-                    {f.status === "UPLOADING" && "uploading…"}
-                    {f.status === "FAILED" && "upload failed"}
-                    {f.status === "MISSING" && "missing from Drive"}
-                  </div>
-                )}
-              </div>
-              <p className="mt-1 truncate text-xs text-zinc-500">{f.filename}</p>
-              <form
-                action={async () => {
-                  "use server";
-                  await deleteFile(f.id);
-                }}
-                className="absolute right-1.5 top-1.5 hidden group-hover:block"
-              >
-                <button
-                  type="submit"
-                  aria-label={`Delete ${f.filename}`}
-                  className="rounded-md bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80"
-                >
-                  ✕
-                </button>
-              </form>
-            </li>
-          ))}
-        </ul>
+        <ManageGrid
+          galleryId={gallery.id}
+          coverFileId={gallery.coverFileId}
+          items={gallery.files.map((f) => ({
+            id: f.id,
+            filename: f.filename,
+            status: f.status,
+            isVideo: f.mimeType.startsWith("video/"),
+            thumbSrc: signedImagePath(f.id, "thumb"),
+            webSrc: signedImagePath(f.id, "web"),
+            starred: f.starred,
+          }))}
+        />
       )}
 
       <div className="mt-12 border-t border-zinc-200 pt-6">

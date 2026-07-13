@@ -13,7 +13,8 @@ function settingsRedirect(req: NextRequest, query: string) {
 }
 
 export async function GET(req: NextRequest) {
-  const { studio } = await requireStudio();
+  const { studio, isAdmin } = await requireStudio();
+  if (!isAdmin) return settingsRedirect(req, "error=admin_only");
 
   const code = req.nextUrl.searchParams.get("code");
   const state = req.nextUrl.searchParams.get("state");
@@ -54,9 +55,10 @@ export async function GET(req: NextRequest) {
 
   const provider = new GoogleDriveProvider(async () => tokens.access_token);
 
-  // Reuse the existing root folder on reconnect when it still exists
-  const existing = await prisma.storageConnection.findUnique({
-    where: { studioId: studio.id },
+  // Singleton connection: reuse the existing root folder on reconnect when
+  // it still exists (and the same Google account is used)
+  const existing = await prisma.storageConnection.findFirst({
+    orderBy: { createdAt: "asc" },
   });
   let rootFolderId: string | null = null;
   if (existing?.rootFolderId) {
@@ -77,11 +79,11 @@ export async function GET(req: NextRequest) {
     rootFolderId,
     status: "ACTIVE" as const,
   };
-  await prisma.storageConnection.upsert({
-    where: { studioId: studio.id },
-    create: { studioId: studio.id, ...data },
-    update: data,
-  });
+  if (existing) {
+    await prisma.storageConnection.update({ where: { id: existing.id }, data });
+  } else {
+    await prisma.storageConnection.create({ data });
+  }
 
   return settingsRedirect(req, "connected=1");
 }

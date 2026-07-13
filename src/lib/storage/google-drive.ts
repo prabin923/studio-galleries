@@ -85,6 +85,10 @@ export class GoogleDriveProvider implements StorageProvider {
           "Content-Type": "application/json; charset=UTF-8",
           "X-Upload-Content-Type": opts.mimeType,
           "X-Upload-Content-Length": String(opts.sizeBytes),
+          // Google echoes CORS headers on the session URI only when the
+          // session is initiated with the browser's origin — without this,
+          // the browser's direct chunk PUTs fail with a CORS error
+          Origin: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3001",
         },
         body: JSON.stringify({
           name: opts.filename,

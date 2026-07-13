@@ -3,7 +3,7 @@ import { z } from "zod";
 import pLimit from "p-limit";
 import { getStudioContext } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getStorageForStudio } from "@/lib/storage";
+import { ensureStudioFolder, getStorage } from "@/lib/storage";
 import { StorageNotConnectedError, StorageRevokedError } from "@/lib/storage/types";
 
 const bodySchema = z.object({
@@ -40,18 +40,19 @@ export async function POST(req: NextRequest) {
 
   let storage;
   try {
-    storage = await getStorageForStudio(ctx.studio.id);
+    storage = await getStorage();
   } catch (e) {
     if (e instanceof StorageNotConnectedError || e instanceof StorageRevokedError) {
       return NextResponse.json({ error: "storage_not_connected" }, { status: 409 });
     }
     throw e;
   }
-  const { provider, connection } = storage;
+  const { provider } = storage;
 
   let folderId = gallery.driveFolderId;
   if (!folderId) {
-    folderId = await provider.createFolder(gallery.title, connection.rootFolderId);
+    const studioFolderId = await ensureStudioFolder(storage, ctx.studio);
+    folderId = await provider.createFolder(gallery.title, studioFolderId);
     await prisma.gallery.update({
       where: { id: gallery.id },
       data: { driveFolderId: folderId },

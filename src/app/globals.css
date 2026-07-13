@@ -12,15 +12,43 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* Pages set their own light/dark palettes explicitly — don't flip with the OS
+   theme, it made form text invisible (white on white) in dark mode. */
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Slow drift for gallery hero covers */
+@keyframes kenburns {
+  0% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1.12);
+  }
+}
+
+@layer utilities {
+  .animate-kenburns {
+    animation: kenburns 24s ease-in-out infinite alternate;
+  }
+}
+
+/* Form controls default to dark-on-light unless a page styles them; inside
+   @layer base so Tailwind utilities (e.g. the dark comment box) still win */
+@layer base {
+  input,
+  textarea,
+  select {
+    color: #18181b;
+    background-color: #ffffff;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #a1a1aa;
+  }
 }

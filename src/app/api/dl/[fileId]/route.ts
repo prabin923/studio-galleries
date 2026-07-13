@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getStudioContext } from "@/lib/auth";
 import { readClientSession } from "@/lib/client-session";
 import { resolveShareLink } from "@/lib/share";
-import { getStorageForStudio } from "@/lib/storage";
+import { getStorage } from "@/lib/storage";
 import {
   RemoteFileMissingError,
   StorageNotConnectedError,
@@ -45,7 +45,7 @@ export async function GET(
   if (!authorized) return NextResponse.json({ error: "unauthorized" }, { status: 403 });
 
   try {
-    const { provider } = await getStorageForStudio(file.studioId);
+    const { provider } = await getStorage();
     const media = await provider.getFileStream(file.driveFileId, {
       range: req.headers.get("range") ?? undefined,
     });

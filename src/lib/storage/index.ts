@@ -47,12 +47,15 @@ export async function exchangeCodeForTokens(code: string, redirectUri: string): 
 }
 
 /**
- * Returns a Drive provider bound to the studio's own Google account,
- * transparently refreshing (and persisting) the access token as needed.
+ * Returns a Drive provider bound to the platform's central Google account
+ * (a singleton connection shared by all studios), transparently refreshing
+ * (and persisting) the access token as needed.
  * Throws StorageNotConnectedError / StorageRevokedError for the UI to map.
  */
-export async function getStorageForStudio(studioId: string): Promise<StudioStorage> {
-  const connection = await prisma.storageConnection.findUnique({ where: { studioId } });
+export async function getStorage(): Promise<StudioStorage> {
+  const connection = await prisma.storageConnection.findFirst({
+    orderBy: { createdAt: "asc" },
+  });
   if (!connection) throw new StorageNotConnectedError();
   if (connection.status === "REVOKED") throw new StorageRevokedError();
 
@@ -113,4 +116,29 @@ export async function getStorageForStudio(studioId: string): Promise<StudioStora
       googleEmail: connection.googleEmail,
     },
   };
+}
+
+/**
+ * Every studio gets its own subfolder inside the platform Drive so gallery
+ * names can't collide across tenants. Created lazily, persisted on Studio.
+ */
+export async function ensureStudioFolder(
+  storage: StudioStorage,
+  studio: { id: string; name: string; slug: string }
+): Promise<string> {
+  const row = await prisma.studio.findUnique({
+    where: { id: studio.id },
+    select: { driveFolderId: true },
+  });
+  if (row?.driveFolderId) return row.driveFolderId;
+
+  const folderId = await storage.provider.createFolder(
+    `${studio.name} (${studio.slug})`,
+    storage.connection.rootFolderId
+  );
+  await prisma.studio.update({
+    where: { id: studio.id },
+    data: { driveFolderId: folderId },
+  });
+  return folderId;
 }

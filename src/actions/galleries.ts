@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireStudio } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getStorageForStudio } from "@/lib/storage";
+import { ensureStudioFolder, getStorage } from "@/lib/storage";
 
 const gallerySchema = z.object({
   title: z.string().trim().min(1).max(200),
@@ -32,8 +32,9 @@ export async function createGallery(formData: FormData) {
 
   // Best effort: the folder is (re)created lazily at upload time if this fails
   try {
-    const { provider, connection } = await getStorageForStudio(studio.id);
-    const folderId = await provider.createFolder(parsed.title, connection.rootFolderId);
+    const storage = await getStorage();
+    const studioFolderId = await ensureStudioFolder(storage, studio);
+    const folderId = await storage.provider.createFolder(parsed.title, studioFolderId);
     await prisma.gallery.update({
       where: { id: gallery.id },
       data: { driveFolderId: folderId },
@@ -43,6 +44,34 @@ export async function createGallery(formData: FormData) {
   }
 
   redirect(`/dashboard/galleries/${gallery.id}`);
+}
+
+export async function toggleFileStar(fileId: string): Promise<{ starred: boolean }> {
+  const { studio } = await requireStudio();
+  const file = await prisma.file.findUnique({
+    where: { id: fileId, studioId: studio.id },
+    select: { id: true, starred: true },
+  });
+  if (!file) throw new Error("File not found");
+  const updated = await prisma.file.update({
+    where: { id: file.id },
+    data: { starred: !file.starred },
+    select: { starred: true },
+  });
+  return { starred: updated.starred };
+}
+
+export async function setGalleryCover(galleryId: string, fileId: string) {
+  const { studio } = await requireStudio();
+  const file = await prisma.file.findUnique({
+    where: { id: fileId, studioId: studio.id, galleryId },
+  });
+  if (!file) throw new Error("File not found");
+  await prisma.gallery.update({
+    where: { id: galleryId, studioId: studio.id },
+    data: { coverFileId: fileId },
+  });
+  revalidatePath(`/dashboard/galleries/${galleryId}`);
 }
 
 export async function updateGalleryStatus(galleryId: string, status: "DRAFT" | "PUBLISHED" | "ARCHIVED") {
@@ -64,7 +93,7 @@ export async function deleteGallery(galleryId: string) {
 
   if (gallery.driveFolderId) {
     try {
-      const { provider } = await getStorageForStudio(studio.id);
+      const { provider } = await getStorage();
       await provider.deleteFolder(gallery.driveFolderId);
     } catch {
       // Drive cleanup is best effort; the DB rows go regardless
@@ -100,7 +129,7 @@ export async function deleteFile(fileId: string) {
 
   if (file.driveFileId) {
     try {
-      const { provider } = await getStorageForStudio(studio.id);
+      const { provider } = await getStorage();
       await provider.deleteFile(file.driveFileId);
     } catch {
       // best effort

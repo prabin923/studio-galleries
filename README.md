@@ -2,7 +2,9 @@
 
 Multi-tenant file-management platform for photo studios, modeled on wfolio.com.
 Studios upload photoshoots into galleries, share secure links, and clients pick
-favorites — with every file stored in the **studio's own Google Drive**.
+favorites — with every file stored in **one central Google Drive owned by the
+platform admin** (folder per studio, folder per gallery). Set `ADMIN_EMAILS`
+in `.env` to control who can connect/disconnect that Drive.
 
 ## Stack
 
@@ -36,8 +38,8 @@ login) · Google Drive API (`drive.file` scope) as pluggable storage · Tailwind
      production — apps left in "Testing" get refresh tokens that expire after
      7 days.
    - Create an **OAuth client ID** (Web application) with redirect URIs:
-     - `http://localhost:3000/api/auth/callback/google`
-     - `http://localhost:3000/api/drive/callback`
+     - `http://localhost:3001/api/auth/callback/google`
+     - `http://localhost:3001/api/drive/callback`
    - Put the client ID/secret in `.env`.
 
 3. **Env**: copy `.env.example` to `.env` and fill in the secrets (generation
@@ -46,7 +48,7 @@ login) · Google Drive API (`drive.file` scope) as pluggable storage · Tailwind
 4. `npm install && npm run dev`
 
 > Note: if something else runs on port 3000, start with
-> `npm run dev -- --port 3100` and change `AUTH_URL`, `NEXT_PUBLIC_APP_URL`,
+> `npm run dev` (pinned to port 3001) and keep `AUTH_URL`, `NEXT_PUBLIC_APP_URL`,
 > and the Google redirect URIs to match.
 
 ## Key paths

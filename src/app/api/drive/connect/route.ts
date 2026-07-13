@@ -11,7 +11,10 @@ const DRIVE_SCOPES = [
 ].join(" ");
 
 export async function GET() {
-  const { studio } = await requireStudio();
+  const { studio, isAdmin } = await requireStudio();
+  if (!isAdmin) {
+    return NextResponse.json({ error: "admin_only" }, { status: 403 });
+  }
 
   const state = await new SignJWT({ studioId: studio.id })
     .setProtectedHeader({ alg: "HS256" })

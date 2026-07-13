@@ -22,10 +22,16 @@ export default async function SelectionsPage({
       shareLinks: {
         include: {
           sessions: {
-            where: { favorites: { some: {} } },
+            where: {
+              OR: [{ favorites: { some: {} } }, { comments: { some: {} } }],
+            },
             include: {
               favorites: {
                 include: { file: { select: { id: true, filename: true, status: true } } },
+                orderBy: { createdAt: "asc" },
+              },
+              comments: {
+                include: { file: { select: { filename: true } } },
                 orderBy: { createdAt: "asc" },
               },
             },
@@ -95,6 +101,23 @@ export default async function SelectionsPage({
                   />
                 </div>
               </div>
+              {session.comments.length > 0 && (
+                <div className="mt-4 rounded-lg bg-zinc-50 p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                    Notes
+                  </p>
+                  <ul className="mt-1.5 space-y-1">
+                    {session.comments.map((c) => (
+                      <li key={c.id} className="text-sm text-zinc-700">
+                        <span className="font-mono text-xs text-zinc-400">
+                          {c.file.filename}:
+                        </span>{" "}
+                        {c.text}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <ul className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
                 {session.favorites.map(({ file }) => (
                   <li key={file.id}>

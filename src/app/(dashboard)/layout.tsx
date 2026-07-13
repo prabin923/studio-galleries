@@ -7,7 +7,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { studio, user } = await requireStudio();
+  const { studio, user, isAdmin } = await requireStudio();
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -23,12 +23,14 @@ export default async function DashboardLayout({
             >
               Galleries
             </Link>
-            <Link
-              href="/dashboard/settings/storage"
-              className="text-sm text-zinc-500 hover:text-zinc-900"
-            >
-              Storage
-            </Link>
+            {isAdmin && (
+              <Link
+                href="/dashboard/settings/storage"
+                className="text-sm text-zinc-500 hover:text-zinc-900"
+              >
+                Storage
+              </Link>
+            )}
           </nav>
           <div className="flex items-center gap-4">
             <span className="text-sm text-zinc-500">{user.email}</span>

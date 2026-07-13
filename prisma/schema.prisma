@@ -56,13 +56,13 @@ model VerificationToken {
 // ---------- Tenancy ----------
 
 model Studio {
-  id          String             @id @default(cuid())
-  name        String
-  slug        String             @unique
-  createdAt   DateTime           @default(now())
-  memberships Membership[]
-  galleries   Gallery[]
-  storage     StorageConnection?
+  id            String       @id @default(cuid())
+  name          String
+  slug          String       @unique
+  driveFolderId String?
+  createdAt     DateTime     @default(now())
+  memberships   Membership[]
+  galleries     Gallery[]
 }
 
 model Membership {
@@ -83,9 +83,9 @@ enum Role {
 
 // ---------- Storage ----------
 
+// Singleton: the platform's central Google Drive that stores all studios' files
 model StorageConnection {
   id              String        @id @default(cuid())
-  studioId        String        @unique
   provider        String        @default("google_drive")
   googleEmail     String
   refreshTokenEnc String
@@ -95,7 +95,6 @@ model StorageConnection {
   status          StorageStatus @default(ACTIVE)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  studio          Studio        @relation(fields: [studioId], references: [id], onDelete: Cascade)
 }
 
 enum StorageStatus {
@@ -143,10 +142,12 @@ model File {
   takenAt     DateTime?
   driveFileId String?
   status      FileStatus @default(UPLOADING)
+  starred     Boolean    @default(false)
   sortOrder   Int        @default(0)
   createdAt   DateTime   @default(now())
   gallery     Gallery    @relation(fields: [galleryId], references: [id], onDelete: Cascade)
   favorites   Favorite[]
+  comments    Comment[]
 
   @@index([galleryId, sortOrder])
   @@index([studioId])
@@ -185,6 +186,7 @@ model ClientSession {
   lastSeenAt  DateTime   @default(now())
   shareLink   ShareLink  @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
   favorites   Favorite[]
+  comments    Comment[]
 }
 
 model Favorite {
@@ -196,4 +198,16 @@ model Favorite {
   file            File          @relation(fields: [fileId], references: [id], onDelete: Cascade)
 
   @@unique([clientSessionId, fileId])
+}
+
+model Comment {
+  id              String        @id @default(cuid())
+  fileId          String
+  clientSessionId String
+  text            String
+  createdAt       DateTime      @default(now())
+  file            File          @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  session         ClientSession @relation(fields: [clientSessionId], references: [id], onDelete: Cascade)
+
+  @@index([fileId, createdAt])
 }

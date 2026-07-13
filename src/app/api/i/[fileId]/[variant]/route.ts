@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyImageSig } from "@/lib/crypto";
-import { getStorageForStudio } from "@/lib/storage";
+import { getStorage } from "@/lib/storage";
 import {
   RemoteFileMissingError,
   StorageNotConnectedError,
@@ -32,7 +32,7 @@ export async function GET(
   }
 
   try {
-    const { provider } = await getStorageForStudio(file.studioId);
+    const { provider } = await getStorage();
 
     if (variant !== "full") {
       const sizePx = VARIANT_SIZES[variant];
