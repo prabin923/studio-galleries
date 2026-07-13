@@ -115,6 +115,9 @@ export default function ClientGallery({
           if (res.error === "limit_reached") {
             setNotice(`You can select up to ${selectionLimit} photos.`);
             setTimeout(() => setNotice(null), 2500);
+          } else if (res.error === "rate_limited") {
+            setNotice("Slow down for a moment, then try again.");
+            setTimeout(() => setNotice(null), 2500);
           }
           return;
         }
@@ -139,6 +142,9 @@ export default function ClientGallery({
             ...prev,
             [fileId]: [...(prev[fileId] ?? []), res.comment],
           }));
+        } else if (res.error === "rate_limited") {
+          setNotice("Too many notes in a short time. Try again in a few minutes.");
+          setTimeout(() => setNotice(null), 3000);
         }
       });
     },
@@ -315,10 +321,11 @@ export default function ClientGallery({
                 <button
                   type="button"
                   onClick={() => toggle(item.id)}
+                  disabled={pending}
                   aria-label={item.favorited ? "Remove from favorites" : "Add to favorites"}
                   className={`absolute right-2 top-2 rounded-full bg-black/50 p-1.5 backdrop-blur transition-all duration-300 hover:scale-110 ${
                     item.favorited ? "" : "opacity-0 group-hover:opacity-100"
-                  } text-zinc-200 hover:text-red-400`}
+                  } text-zinc-200 hover:text-red-400 disabled:opacity-40`}
                 >
                   <HeartIcon filled={item.favorited} />
                 </button>
@@ -352,7 +359,8 @@ export default function ClientGallery({
               <button
                 type="button"
                 onClick={() => toggle(current.id)}
-                className={`rounded-full p-2 ${current.favorited ? "text-red-500" : "text-white hover:text-red-400"}`}
+                disabled={pending}
+                className={`rounded-full p-2 disabled:opacity-40 ${current.favorited ? "text-red-500" : "text-white hover:text-red-400"}`}
                 aria-label="Toggle favorite"
               >
                 <HeartIcon filled={current.favorited} />

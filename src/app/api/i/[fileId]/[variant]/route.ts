@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyImageSig } from "@/lib/crypto";
 import { getStorage } from "@/lib/storage";
+import { cacheHeaderForExpiry } from "@/lib/http";
 import {
   RemoteFileMissingError,
   StorageNotConnectedError,
@@ -9,8 +10,6 @@ import {
 } from "@/lib/storage/types";
 
 const VARIANT_SIZES: Record<string, number> = { thumb: 400, web: 1600 };
-const CACHE_HEADER = "public, max-age=31536000, immutable";
-
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ fileId: string; variant: string }> }
@@ -25,6 +24,7 @@ export async function GET(
   if (!verifyImageSig(fileId, variant, exp, sig)) {
     return NextResponse.json({ error: "invalid_signature" }, { status: 403 });
   }
+  const cacheHeader = cacheHeaderForExpiry(exp);
 
   const file = await prisma.file.findUnique({ where: { id: fileId } });
   if (!file || file.status !== "READY" || !file.driveFileId) {
@@ -46,7 +46,7 @@ export async function GET(
           return new NextResponse(res.body, {
             headers: {
               "Content-Type": res.headers.get("content-type") ?? "image/jpeg",
-              "Cache-Control": CACHE_HEADER,
+              "Cache-Control": cacheHeader,
             },
           });
         }
@@ -62,7 +62,7 @@ export async function GET(
       headers: {
         ...media.headers,
         "Content-Type": media.headers["content-type"] ?? file.mimeType,
-        "Cache-Control": CACHE_HEADER,
+        "Cache-Control": cacheHeader,
       },
     });
   } catch (e) {

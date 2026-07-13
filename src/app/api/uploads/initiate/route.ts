@@ -5,6 +5,7 @@ import { getStudioContext } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureStudioFolder, getStorage } from "@/lib/storage";
 import { StorageNotConnectedError, StorageRevokedError } from "@/lib/storage/types";
+import { MAX_UPLOAD_FILES_PER_BATCH, MAX_UPLOAD_SIZE_BYTES } from "@/lib/upload-policy";
 
 const bodySchema = z.object({
   galleryId: z.string().min(1),
@@ -13,14 +14,14 @@ const bodySchema = z.object({
       z.object({
         filename: z.string().min(1).max(255),
         mimeType: z.string().min(1).max(100),
-        sizeBytes: z.number().int().positive().max(20 * 1024 * 1024 * 1024),
+        sizeBytes: z.number().int().positive().max(MAX_UPLOAD_SIZE_BYTES),
         width: z.number().int().positive().optional(),
         height: z.number().int().positive().optional(),
         takenAt: z.string().datetime().optional(),
       })
     )
     .min(1)
-    .max(50),
+    .max(MAX_UPLOAD_FILES_PER_BATCH),
 });
 
 export async function POST(req: NextRequest) {

@@ -4,6 +4,7 @@ import { requireStudio } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createShareLink, revokeShareLink } from "@/actions/share-links";
 import CopyButton from "@/components/CopyButton";
+import { publicAppUrl } from "@/lib/app-url";
 
 export default async function SharePage({
   params,
@@ -24,7 +25,7 @@ export default async function SharePage({
   });
   if (!gallery) notFound();
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const appUrl = await publicAppUrl();
 
   return (
     <div className="max-w-3xl">

@@ -67,6 +67,7 @@ export default function ManageGrid({
 
   const remove = useCallback(
     (id: string) => {
+      if (!window.confirm("Delete this file from the gallery and Google Drive?")) return;
       setLightbox(null);
       startTransition(async () => {
         await deleteFile(id);
@@ -142,10 +143,11 @@ export default function ManageGrid({
               <button
                 type="button"
                 onClick={() => toggleStar(f.id)}
+                disabled={pending}
                 aria-label={f.starred ? "Remove from favorites" : "Add to favorites"}
                 className={`absolute right-1.5 top-1.5 rounded-full bg-black/50 p-1.5 backdrop-blur transition-opacity ${
                   f.starred ? "" : "opacity-0 group-hover:opacity-100"
-                } text-white hover:text-red-400`}
+                } text-white hover:text-red-400 disabled:opacity-40`}
               >
                 <HeartIcon filled={f.starred} />
               </button>
@@ -165,7 +167,8 @@ export default function ManageGrid({
               <button
                 type="button"
                 onClick={() => toggleStar(current.id)}
-                className={`rounded-full p-2 ${current.starred ? "text-red-500" : "text-white hover:text-red-400"}`}
+                disabled={pending}
+                className={`rounded-full p-2 disabled:opacity-40 ${current.starred ? "text-red-500" : "text-white hover:text-red-400"}`}
                 aria-label="Toggle favorite"
               >
                 <HeartIcon filled={current.starred} className="h-5 w-5" />

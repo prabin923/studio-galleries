@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { readClientSession } from "@/lib/client-session";
 import { resolveShareLink } from "@/lib/share";
 import { getStorage } from "@/lib/storage";
+import { contentDisposition } from "@/lib/http";
 
 export const maxDuration = 300;
 
@@ -81,7 +82,7 @@ export async function GET(
   return new NextResponse(Readable.toWeb(out) as ReadableStream, {
     headers: {
       "Content-Type": "application/zip",
-      "Content-Disposition": `attachment; filename="${encodeURIComponent(zipName)}"`,
+      "Content-Disposition": contentDisposition("attachment", zipName),
       "Cache-Control": "private, no-store",
     },
   });

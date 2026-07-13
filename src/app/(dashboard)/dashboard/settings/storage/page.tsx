@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { requireStudio } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import ConfirmSubmitButton from "@/components/ConfirmSubmitButton";
 
 const ERROR_MESSAGES: Record<string, string> = {
   missing_code: "Google didn't return an authorization code. Please try again.",
@@ -77,12 +78,12 @@ export default async function StoragePage({
                     Reconnect
                   </a>
                   <form action={disconnect}>
-                    <button
-                      type="submit"
+                    <ConfirmSubmitButton
+                      message="Disconnect platform storage for every studio?"
                       className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
                     >
                       Disconnect
-                    </button>
+                    </ConfirmSubmitButton>
                   </form>
                 </div>
                 <p className="mt-3 text-xs text-zinc-400">

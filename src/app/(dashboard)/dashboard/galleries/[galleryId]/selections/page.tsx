@@ -7,6 +7,7 @@ import CopyButton from "@/components/CopyButton";
 
 /** "IMG_0412.jpg" → "IMG_0412" for Lightroom's text filter */
 const basename = (filename: string) => filename.replace(/\.[^.]+$/, "");
+const csvCell = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
 export default async function SelectionsPage({
   params,
@@ -98,6 +99,22 @@ export default async function SelectionsPage({
                   <CopyButton
                     text={filenames.join("\n")}
                     label="Copy filenames"
+                  />
+                  <CopyButton
+                    text={[
+                      "client,link,filename,basename",
+                      ...filenames.map((filename) =>
+                        [
+                          session.displayName ?? "Anonymous visitor",
+                          linkLabel ?? "",
+                          filename,
+                          basename(filename),
+                        ]
+                          .map(csvCell)
+                          .join(",")
+                      ),
+                    ].join("\n")}
+                    label="Copy CSV"
                   />
                 </div>
               </div>

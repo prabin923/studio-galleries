@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { encryptSecret } from "@/lib/crypto";
 import { exchangeCodeForTokens } from "@/lib/storage";
 import { GoogleDriveProvider } from "@/lib/storage/google-drive";
+import { publicAppUrl } from "@/lib/app-url";
 
 const ROOT_FOLDER_NAME = "Studio Galleries";
 
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
 
   const tokens = await exchangeCodeForTokens(
     code,
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/drive/callback`
+    `${await publicAppUrl()}/api/drive/callback`
   );
   if (!tokens.refresh_token) {
     // Happens if consent was previously granted and prompt=consent was bypassed

@@ -3,12 +3,18 @@
 import { prisma } from "@/lib/prisma";
 import { readClientSession } from "@/lib/client-session";
 import { resolveShareLink } from "@/lib/share";
+import { rateLimitAction } from "@/lib/action-rate-limit";
+
+type FavoriteTransaction = Pick<typeof prisma, "favorite">;
 
 export type ToggleResult =
   | { ok: true; selected: boolean; count: number }
-  | { ok: false; error: "limit_reached" | "unauthorized" | "not_found" };
+  | { ok: false; error: "limit_reached" | "rate_limited" | "unauthorized" | "not_found" };
 
 export async function toggleFavorite(token: string, fileId: string): Promise<ToggleResult> {
+  if (!(await rateLimitAction("favorite", token, 120, 60 * 1000))) {
+    return { ok: false, error: "rate_limited" };
+  }
   const resolved = await resolveShareLink(token);
   if (resolved.status !== "ok") return { ok: false, error: "unauthorized" };
   const { link } = resolved;
@@ -25,7 +31,7 @@ export async function toggleFavorite(token: string, fileId: string): Promise<Tog
     return { ok: false, error: "not_found" };
   }
 
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: FavoriteTransaction) => {
     const existing = await tx.favorite.findUnique({
       where: { clientSessionId_fileId: { clientSessionId: session.id, fileId: file.id } },
     });

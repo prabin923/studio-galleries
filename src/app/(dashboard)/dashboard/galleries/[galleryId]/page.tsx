@@ -10,6 +10,7 @@ import {
 } from "@/actions/galleries";
 import Uploader from "@/components/uploader/Uploader";
 import ManageGrid from "@/components/dashboard/ManageGrid";
+import ConfirmSubmitButton from "@/components/ConfirmSubmitButton";
 
 export default async function GalleryPage({
   params,
@@ -112,12 +113,12 @@ export default async function GalleryPage({
             await deleteGallery(gallery.id);
           }}
         >
-          <button
-            type="submit"
+          <ConfirmSubmitButton
+            message="Delete this gallery and all of its files from Google Drive?"
             className="text-sm text-red-600 hover:text-red-800"
           >
             Delete gallery and all its files
-          </button>
+          </ConfirmSubmitButton>
         </form>
       </div>
     </div>

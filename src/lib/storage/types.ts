@@ -1,7 +1,9 @@
 export type RemoteFileMeta = {
   providerFileId: string;
+  name?: string;
   sizeBytes: number;
   mimeType: string;
+  parents?: string[];
   width?: number;
   height?: number;
   checksum?: string;

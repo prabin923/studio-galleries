@@ -4,6 +4,7 @@ import { getStudioContext } from "@/lib/auth";
 import { readClientSession } from "@/lib/client-session";
 import { resolveShareLink } from "@/lib/share";
 import { getStorage } from "@/lib/storage";
+import { contentDisposition } from "@/lib/http";
 import {
   RemoteFileMissingError,
   StorageNotConnectedError,
@@ -55,7 +56,7 @@ export async function GET(
       headers: {
         ...media.headers,
         "Content-Type": media.headers["content-type"] ?? file.mimeType,
-        "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${encodeURIComponent(file.filename)}"`,
+        "Content-Disposition": contentDisposition(inline ? "inline" : "attachment", file.filename),
         "Cache-Control": "private, no-store",
       },
     });

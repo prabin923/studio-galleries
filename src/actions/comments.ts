@@ -3,10 +3,11 @@
 import { prisma } from "@/lib/prisma";
 import { readClientSession } from "@/lib/client-session";
 import { resolveShareLink } from "@/lib/share";
+import { rateLimitAction } from "@/lib/action-rate-limit";
 
 export type AddCommentResult =
   | { ok: true; comment: { id: string; text: string; createdAt: string } }
-  | { ok: false; error: "unauthorized" | "not_found" | "empty" };
+  | { ok: false; error: "rate_limited" | "unauthorized" | "not_found" | "empty" };
 
 export async function addComment(
   token: string,
@@ -15,6 +16,9 @@ export async function addComment(
 ): Promise<AddCommentResult> {
   const trimmed = text.trim().slice(0, 1000);
   if (!trimmed) return { ok: false, error: "empty" };
+  if (!(await rateLimitAction("comment", token, 30, 10 * 60 * 1000))) {
+    return { ok: false, error: "rate_limited" };
+  }
 
   const resolved = await resolveShareLink(token);
   if (resolved.status !== "ok") return { ok: false, error: "unauthorized" };

@@ -4,6 +4,7 @@ import {
   RemoteStream,
   StorageProvider,
 } from "./types";
+import { publicAppUrlFromEnv } from "../app-url";
 
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const DRIVE_UPLOAD = "https://www.googleapis.com/upload/drive/v3";
@@ -88,7 +89,7 @@ export class GoogleDriveProvider implements StorageProvider {
           // Google echoes CORS headers on the session URI only when the
           // session is initiated with the browser's origin — without this,
           // the browser's direct chunk PUTs fail with a CORS error
-          Origin: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3001",
+          Origin: publicAppUrlFromEnv() ?? "http://localhost:3001",
         },
         body: JSON.stringify({
           name: opts.filename,
@@ -108,19 +109,23 @@ export class GoogleDriveProvider implements StorageProvider {
   async getFileMeta(providerFileId: string): Promise<RemoteFileMeta> {
     const f = await this.fetchJson<{
       id: string;
+      name?: string;
+      parents?: string[];
       size?: string;
       mimeType: string;
       md5Checksum?: string;
       imageMediaMetadata?: { width?: number; height?: number };
       thumbnailLink?: string;
     }>(
-      `${DRIVE_API}/files/${providerFileId}?fields=id,size,mimeType,md5Checksum,imageMediaMetadata,thumbnailLink`
+      `${DRIVE_API}/files/${providerFileId}?fields=id,name,parents,size,mimeType,md5Checksum,imageMediaMetadata,thumbnailLink`
     );
     if (f.thumbnailLink) {
       rememberThumb(providerFileId, f.thumbnailLink);
     }
     return {
       providerFileId: f.id,
+      name: f.name,
+      parents: f.parents,
       sizeBytes: Number(f.size ?? 0),
       mimeType: f.mimeType,
       checksum: f.md5Checksum,

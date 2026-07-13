@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getStudioContext } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getStorage } from "@/lib/storage";
+import { isExpectedCompletedUpload } from "@/lib/upload-policy";
 
 const bodySchema = z.object({
   fileId: z.string().min(1),
@@ -21,9 +22,14 @@ export async function POST(req: NextRequest) {
 
   const file = await prisma.file.findUnique({
     where: { id: fileId, studioId: ctx.studio.id },
+    include: { gallery: { select: { driveFolderId: true } } },
   });
   if (!file) return NextResponse.json({ error: "file_not_found" }, { status: 404 });
   if (file.status === "READY") return NextResponse.json({ ok: true });
+  if (!file.gallery.driveFolderId) {
+    await prisma.file.update({ where: { id: file.id }, data: { status: "FAILED" } });
+    return NextResponse.json({ error: "gallery_folder_missing" }, { status: 409 });
+  }
 
   const { provider } = await getStorage();
 
@@ -34,6 +40,17 @@ export async function POST(req: NextRequest) {
   } catch {
     await prisma.file.update({ where: { id: file.id }, data: { status: "FAILED" } });
     return NextResponse.json({ error: "drive_file_not_found" }, { status: 400 });
+  }
+  if (
+    !isExpectedCompletedUpload(meta, {
+      filename: file.filename,
+      mimeType: file.mimeType,
+      sizeBytes: file.sizeBytes,
+      folderId: file.gallery.driveFolderId,
+    })
+  ) {
+    await prisma.file.update({ where: { id: file.id }, data: { status: "FAILED" } });
+    return NextResponse.json({ error: "drive_file_mismatch" }, { status: 400 });
   }
 
   await prisma.file.update({

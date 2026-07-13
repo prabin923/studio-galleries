@@ -1,5 +1,5 @@
-import { randomBytes } from "crypto";
 import { prisma } from "./prisma";
+import { generateShareToken, isPlausibleShareToken } from "./share-token";
 import type { Gallery, ShareLink } from "@prisma/client";
 
 export type ResolvedShareLink =
@@ -9,12 +9,10 @@ export type ResolvedShareLink =
   | { status: "expired" }
   | { status: "unpublished" };
 
-export function generateShareToken(): string {
-  return randomBytes(24).toString("base64url"); // ~192 bits
-}
+export { generateShareToken };
 
 export async function resolveShareLink(token: string): Promise<ResolvedShareLink> {
-  if (!token || token.length > 64) return { status: "not_found" };
+  if (!isPlausibleShareToken(token)) return { status: "not_found" };
   const link = await prisma.shareLink.findUnique({
     where: { token },
     include: { gallery: true },

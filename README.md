@@ -42,14 +42,24 @@ login) · Google Drive API (`drive.file` scope) as pluggable storage · Tailwind
      - `http://localhost:3001/api/drive/callback`
    - Put the client ID/secret in `.env`.
 
-3. **Env**: copy `.env.example` to `.env` and fill in the secrets (generation
-   commands are in the comments).
+3. **Env**: copy `.env.example` to `.env` for local development and fill in the
+   secrets (generation commands are in the comments). Do not deploy that file to
+   Vercel; use project Environment Variables instead.
 
 4. `npm install && npm run dev`
 
 > Note: if something else runs on port 3000, start with
 > `npm run dev` (pinned to port 3001) and keep `AUTH_URL`, `NEXT_PUBLIC_APP_URL`,
 > and the Google redirect URIs to match.
+
+## Checks
+
+- `npm run lint` — ESLint
+- `npm run typecheck` — TypeScript
+- `npm run test` — focused unit tests for security-sensitive helpers
+- `npm run check` — all of the above
+
+For production rollout details, see `docs/PRODUCTION.md`.
 
 ## Key paths
 
