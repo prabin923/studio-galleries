@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 
 const FEATURES = [
   {
@@ -18,6 +19,15 @@ const FEATURES = [
     body: "Clients download single photos or the whole shoot as a ZIP — full resolution, exactly as you shot it.",
   },
 ];
+
+export const metadata: Metadata = {
+  title: "Private Client Photo Proofing",
+  description:
+    "Create secure proofing galleries, collect client favorites and comments, and deliver final images from one private studio workspace.",
+  alternates: {
+    canonical: "/",
+  },
+};
 
 export default function Home() {
   return (

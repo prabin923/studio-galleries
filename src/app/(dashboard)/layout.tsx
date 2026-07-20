@@ -1,6 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { requireStudio } from "@/lib/auth";
 import { signOut } from "@/lib/auth";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+  robots: { index: false, follow: false },
+};
 
 export default async function DashboardLayout({
   children,

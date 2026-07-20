@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Studio Galleries private client photo proofing</title>
+  <desc id="desc">Share shoots, collect favorites and comments, and deliver final images securely.</desc>
+  <rect width="1200" height="630" fill="#09090b"/>
+  <rect x="72" y="72" width="1056" height="486" rx="28" fill="none" stroke="#3f3f46" stroke-width="2"/>
+  <text x="128" y="150" fill="#a1a1aa" font-family="Arial, Helvetica, sans-serif" font-size="30" letter-spacing="8">STUDIO GALLERIES</text>
+  <text x="128" y="300" fill="#fafafa" font-family="Arial, Helvetica, sans-serif" font-size="78" font-weight="700">Private client</text>
+  <text x="128" y="390" fill="#fafafa" font-family="Arial, Helvetica, sans-serif" font-size="78" font-weight="700">photo proofing</text>
+  <text x="128" y="462" fill="#d4d4d8" font-family="Arial, Helvetica, sans-serif" font-size="32">Share shoots, collect favorites and comments,</text>
+  <text x="128" y="506" fill="#d4d4d8" font-family="Arial, Helvetica, sans-serif" font-size="32">and deliver final images securely.</text>
+  <circle cx="912" cy="164" r="48" fill="#27272a"/>
+  <circle cx="1012" cy="164" r="48" fill="#3f3f46"/>
+  <circle cx="962" cy="254" r="48" fill="#18181b" stroke="#52525b" stroke-width="2"/>
+</svg>
