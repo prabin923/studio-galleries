@@ -20,9 +20,9 @@ login) · Google Drive API (`drive.file` scope) as pluggable storage · Tailwind
   `/api/i/{fileId}/{variant}` with HMAC-signed expiring URLs and immutable
   cache headers; thumbnails reuse Drive's own resizer.
 - **Clients need no account**: share links carry a token (192-bit), optional
-  argon2id password, expiry, and a selection cap. Anonymous visitors get a
-  signed httpOnly cookie session; favorites are enforced server-side in a
-  transaction.
+  argon2id password, expiry, selection deadline, and a selection cap. Clients
+  label picks as must-have or maybe, leave notes, and finalize their selection;
+  all proofing changes are enforced server-side.
 - **Export**: per-client selections copy out as comma-separated basenames
   (Lightroom text filter) or newline filenames (Capture One).
 

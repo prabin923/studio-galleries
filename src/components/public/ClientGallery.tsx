@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { setDisplayName, toggleFavorite } from "@/actions/favorites";
+import {
+  setDisplayName,
+  setSelectionFinalized,
+  setSelectionLabel,
+  toggleFavorite,
+} from "@/actions/favorites";
 import { addComment } from "@/actions/comments";
 
 type Item = {
@@ -11,6 +16,7 @@ type Item = {
   thumbSrc: string;
   webSrc: string;
   favorited: boolean;
+  selectionLabel: "MUST_HAVE" | "MAYBE" | null;
 };
 
 type CommentEntry = { id: string; text: string; createdAt: string };
@@ -28,6 +34,9 @@ type Props = {
   allowDownload: boolean;
   initialDisplayName: string | null;
   initialComments: Record<string, CommentEntry[]>;
+  selectionClosesAt: string | null;
+  selectionIsClosed: boolean;
+  initialSelectionFinalized: boolean;
 };
 
 function HeartIcon({ filled, className = "h-5 w-5" }: { filled: boolean; className?: string }) {
@@ -57,6 +66,9 @@ export default function ClientGallery({
   allowDownload,
   initialDisplayName,
   initialComments,
+  selectionClosesAt,
+  selectionIsClosed,
+  initialSelectionFinalized,
 }: Props) {
   const [items, setItems] = useState(initialItems);
   const [count, setCount] = useState(initialCount);
@@ -67,12 +79,20 @@ export default function ClientGallery({
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [selectionFinalized, setSelectionFinalizedState] = useState(initialSelectionFinalized);
   const [pending, startTransition] = useTransition();
   const [revealed, setRevealed] = useState<Set<string>>(() => new Set());
   const [loaded, setLoaded] = useState<Set<string>>(() => new Set());
   const gridRef = useRef<HTMLUListElement>(null);
 
   const visible = onlyFavorites ? items.filter((i) => i.favorited) : items;
+  const proofingClosed = selectionIsClosed || selectionFinalized;
+  const selectionDeadline = selectionClosesAt?.slice(0, 10) ?? null;
+
+  const showNotice = useCallback((message: string) => {
+    setNotice(message);
+    setTimeout(() => setNotice(null), 3000);
+  }, []);
 
   // staggered reveal as tiles scroll into view
   useEffect(() => {
@@ -113,21 +133,68 @@ export default function ClientGallery({
         const res = await toggleFavorite(token, id);
         if (!res.ok) {
           if (res.error === "limit_reached") {
-            setNotice(`You can select up to ${selectionLimit} photos.`);
-            setTimeout(() => setNotice(null), 2500);
+            showNotice(`You can select up to ${selectionLimit} photos.`);
           } else if (res.error === "rate_limited") {
-            setNotice("Slow down for a moment, then try again.");
-            setTimeout(() => setNotice(null), 2500);
+            showNotice("Slow down for a moment, then try again.");
+          } else if (res.error === "selection_closed") {
+            showNotice("Selections are closed for this gallery.");
           }
           return;
         }
         setItems((prev) =>
-          prev.map((i) => (i.id === id ? { ...i, favorited: res.selected } : i))
+          prev.map((i) =>
+            i.id === id
+              ? {
+                  ...i,
+                  favorited: res.selected,
+                  selectionLabel: res.selected ? "MUST_HAVE" : null,
+                }
+              : i
+          )
         );
         setCount(res.count);
       });
     },
-    [token, selectionLimit]
+    [token, selectionLimit, showNotice]
+  );
+
+  const updateSelectionLabel = useCallback(
+    (fileId: string, label: "MUST_HAVE" | "MAYBE") => {
+      startTransition(async () => {
+        const res = await setSelectionLabel(token, fileId, label);
+        if (!res.ok) {
+          showNotice(
+            res.error === "selection_closed"
+              ? "Selections are closed for this gallery."
+              : "Could not update this selection. Try again."
+          );
+          return;
+        }
+        setItems((prev) =>
+          prev.map((item) => (item.id === fileId ? { ...item, selectionLabel: res.label } : item))
+        );
+      });
+    },
+    [token, showNotice]
+  );
+
+  const finalizeSelection = useCallback(
+    (finalized: boolean) => {
+      startTransition(async () => {
+        const res = await setSelectionFinalized(token, finalized);
+        if (!res.ok) {
+          showNotice(
+            res.error === "empty_selection"
+              ? "Choose at least one photo before finalizing."
+              : "Could not update your selection. Try again."
+          );
+          return;
+        }
+        setSelectionFinalizedState(res.finalized);
+        showNotice(res.finalized ? "Selection finalized." : "You can edit your selection again.");
+      });
+    },
+    [token, showNotice]
   );
 
   const submitComment = useCallback(
@@ -143,12 +210,13 @@ export default function ClientGallery({
             [fileId]: [...(prev[fileId] ?? []), res.comment],
           }));
         } else if (res.error === "rate_limited") {
-          setNotice("Too many notes in a short time. Try again in a few minutes.");
-          setTimeout(() => setNotice(null), 3000);
+          showNotice("Too many notes in a short time. Try again in a few minutes.");
+        } else if (res.error === "selection_closed") {
+          showNotice("Selections are closed for this gallery.");
         }
       });
     },
-    [token, commentDraft]
+    [token, commentDraft, showNotice]
   );
 
   useEffect(() => {
@@ -233,6 +301,35 @@ export default function ClientGallery({
             </div>
           )}
         </div>
+        {(selectionDeadline || count > 0) && (
+          <div className="border-t border-zinc-800 bg-zinc-900/60 px-6 py-2.5">
+            <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-zinc-400">
+                {selectionFinalized
+                  ? "Your selection is finalized."
+                  : selectionIsClosed
+                    ? "Selections are closed."
+                    : selectionDeadline
+                      ? `Choose your photos by ${selectionDeadline}.`
+                      : "Save your favorite photos, then finalize your selection."}
+              </p>
+              {count > 0 && !selectionIsClosed && (
+                <button
+                  type="button"
+                  onClick={() => finalizeSelection(!selectionFinalized)}
+                  disabled={pending}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-40 ${
+                    selectionFinalized
+                      ? "border border-zinc-600 text-zinc-200 hover:border-zinc-400"
+                      : "bg-emerald-400 text-zinc-950 hover:bg-emerald-300"
+                  }`}
+                >
+                  {selectionFinalized ? "Edit selection" : "Finalize selection"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         {notice && (
           <p className="border-t border-amber-500/20 bg-amber-500/10 px-6 py-2 text-center text-sm text-amber-400">
             {notice}
@@ -321,7 +418,7 @@ export default function ClientGallery({
                 <button
                   type="button"
                   onClick={() => toggle(item.id)}
-                  disabled={pending}
+                  disabled={pending || proofingClosed}
                   aria-label={item.favorited ? "Remove from favorites" : "Add to favorites"}
                   className={`absolute right-2 top-2 rounded-full bg-black/50 p-1.5 backdrop-blur transition-all duration-300 hover:scale-110 ${
                     item.favorited ? "" : "opacity-0 group-hover:opacity-100"
@@ -329,6 +426,14 @@ export default function ClientGallery({
                 >
                   <HeartIcon filled={item.favorited} />
                 </button>
+                {item.selectionLabel && (
+                  <span
+                    className={`absolute bottom-2 left-2 h-2.5 w-2.5 rounded-full ring-2 ring-zinc-950 ${
+                      item.selectionLabel === "MUST_HAVE" ? "bg-emerald-400" : "bg-amber-400"
+                    }`}
+                    title={item.selectionLabel === "MUST_HAVE" ? "Must have" : "Maybe"}
+                  />
+                )}
               </li>
             ))}
           </ul>
@@ -359,12 +464,44 @@ export default function ClientGallery({
               <button
                 type="button"
                 onClick={() => toggle(current.id)}
-                disabled={pending}
+                disabled={pending || proofingClosed}
                 className={`rounded-full p-2 disabled:opacity-40 ${current.favorited ? "text-red-500" : "text-white hover:text-red-400"}`}
                 aria-label="Toggle favorite"
               >
                 <HeartIcon filled={current.favorited} />
               </button>
+              {current.favorited && (
+                <div
+                  className="flex overflow-hidden rounded-lg border border-zinc-700 text-xs"
+                  role="group"
+                  aria-label="Selection priority"
+                >
+                  <button
+                    type="button"
+                    onClick={() => updateSelectionLabel(current.id, "MUST_HAVE")}
+                    disabled={pending || proofingClosed}
+                    className={`px-2.5 py-1.5 disabled:opacity-40 ${
+                      current.selectionLabel === "MUST_HAVE"
+                        ? "bg-emerald-400 font-medium text-zinc-950"
+                        : "text-zinc-300 hover:bg-zinc-800"
+                    }`}
+                  >
+                    Must have
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateSelectionLabel(current.id, "MAYBE")}
+                    disabled={pending || proofingClosed}
+                    className={`border-l border-zinc-700 px-2.5 py-1.5 disabled:opacity-40 ${
+                      current.selectionLabel === "MAYBE"
+                        ? "bg-amber-400 font-medium text-zinc-950"
+                        : "text-zinc-300 hover:bg-zinc-800"
+                    }`}
+                  >
+                    Maybe
+                  </button>
+                </div>
+              )}
               {allowDownload && (
                 <a
                   href={`/api/dl/${current.id}?t=${token}`}
@@ -429,7 +566,7 @@ export default function ClientGallery({
               />
               <button
                 type="submit"
-                disabled={pending || !commentDraft.trim()}
+                disabled={pending || proofingClosed || !commentDraft.trim()}
                 className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-950 disabled:opacity-40"
               >
                 Send

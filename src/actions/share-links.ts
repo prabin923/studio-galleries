@@ -13,8 +13,17 @@ const createSchema = z.object({
   password: z.string().max(200).optional(),
   expiresAt: z.string().optional(),
   selectionLimit: z.coerce.number().int().positive().max(100000).optional(),
+  selectionClosesAt: z.string().optional(),
   allowDownload: z.boolean(),
 });
+
+function endOfUtcDay(value: string): Date {
+  const date = new Date(`${value}T23:59:59.999Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    throw new Error("Invalid date");
+  }
+  return date;
+}
 
 export async function createShareLink(formData: FormData) {
   const { studio } = await requireStudio();
@@ -24,8 +33,17 @@ export async function createShareLink(formData: FormData) {
     password: formData.get("password") || undefined,
     expiresAt: formData.get("expiresAt") || undefined,
     selectionLimit: formData.get("selectionLimit") || undefined,
+    selectionClosesAt: formData.get("selectionClosesAt") || undefined,
     allowDownload: formData.get("allowDownload") === "on",
   });
+
+  const expiresAt = parsed.expiresAt ? endOfUtcDay(parsed.expiresAt) : null;
+  const selectionClosesAt = parsed.selectionClosesAt
+    ? endOfUtcDay(parsed.selectionClosesAt)
+    : null;
+  if (expiresAt && selectionClosesAt && selectionClosesAt > expiresAt) {
+    throw new Error("Selection deadline must be on or before link expiry");
+  }
 
   const gallery = await prisma.gallery.findUnique({
     where: { id: parsed.galleryId, studioId: studio.id },
@@ -38,8 +56,9 @@ export async function createShareLink(formData: FormData) {
       token: generateShareToken(),
       label: parsed.label,
       passwordHash: parsed.password ? await hash(parsed.password) : null,
-      expiresAt: parsed.expiresAt ? new Date(parsed.expiresAt) : null,
+      expiresAt,
       selectionLimit: parsed.selectionLimit,
+      selectionClosesAt,
       allowDownload: parsed.allowDownload,
     },
   });

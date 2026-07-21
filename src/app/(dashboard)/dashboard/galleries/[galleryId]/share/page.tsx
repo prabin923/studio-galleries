@@ -94,6 +94,20 @@ export default async function SharePage({
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-900 focus:outline-none"
             />
           </div>
+          <div>
+            <label htmlFor="selectionClosesAt" className="block text-sm font-medium text-zinc-700">
+              Selection deadline <span className="text-zinc-400">(optional)</span>
+            </label>
+            <input
+              id="selectionClosesAt"
+              name="selectionClosesAt"
+              type="date"
+              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-900 focus:outline-none"
+            />
+            <p className="mt-1 text-xs text-zinc-400">
+              Clients can still view the gallery after this date, but cannot change picks or notes.
+            </p>
+          </div>
           <label className="flex items-center gap-2 text-sm text-zinc-700">
             <input type="checkbox" name="allowDownload" defaultChecked className="rounded" />
             Allow downloads
@@ -134,6 +148,9 @@ export default async function SharePage({
                   <p className="mt-1 text-xs text-zinc-400">
                     {link.passwordHash ? "password · " : ""}
                     {link.selectionLimit ? `pick up to ${link.selectionLimit} · ` : ""}
+                    {link.selectionClosesAt
+                      ? `selection deadline ${link.selectionClosesAt.toISOString().slice(0, 10)} · `
+                      : ""}
                     {link.allowDownload ? "downloads on" : "downloads off"} ·{" "}
                     {link._count.sessions} visitor{link._count.sessions === 1 ? "" : "s"} ·{" "}
                     {link.viewCount} views

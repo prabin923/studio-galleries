@@ -163,41 +163,49 @@ enum FileStatus {
 // ---------- Sharing & selection ----------
 
 model ShareLink {
-  id             String          @id @default(cuid())
-  galleryId      String
-  token          String          @unique
-  label          String?
-  passwordHash   String?
-  expiresAt      DateTime?
-  revokedAt      DateTime?
-  selectionLimit Int?
-  allowDownload  Boolean         @default(true)
-  viewCount      Int             @default(0)
-  createdAt      DateTime        @default(now())
-  gallery        Gallery         @relation(fields: [galleryId], references: [id], onDelete: Cascade)
-  sessions       ClientSession[]
+  id                String          @id @default(cuid())
+  galleryId         String
+  token             String          @unique
+  label             String?
+  passwordHash      String?
+  expiresAt         DateTime?
+  revokedAt         DateTime?
+  selectionLimit    Int?
+  selectionClosesAt DateTime?
+  allowDownload     Boolean         @default(true)
+  viewCount         Int             @default(0)
+  createdAt         DateTime        @default(now())
+  gallery           Gallery         @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  sessions          ClientSession[]
 }
 
 model ClientSession {
-  id          String     @id @default(cuid())
-  shareLinkId String
-  displayName String?
-  createdAt   DateTime   @default(now())
-  lastSeenAt  DateTime   @default(now())
-  shareLink   ShareLink  @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
-  favorites   Favorite[]
-  comments    Comment[]
+  id                   String     @id @default(cuid())
+  shareLinkId          String
+  displayName          String?
+  selectionFinalizedAt DateTime?
+  createdAt            DateTime   @default(now())
+  lastSeenAt           DateTime   @default(now())
+  shareLink            ShareLink  @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  favorites            Favorite[]
+  comments             Comment[]
 }
 
 model Favorite {
-  id              String        @id @default(cuid())
+  id              String         @id @default(cuid())
   clientSessionId String
   fileId          String
-  createdAt       DateTime      @default(now())
-  session         ClientSession @relation(fields: [clientSessionId], references: [id], onDelete: Cascade)
-  file            File          @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  label           SelectionLabel @default(MUST_HAVE)
+  createdAt       DateTime       @default(now())
+  session         ClientSession  @relation(fields: [clientSessionId], references: [id], onDelete: Cascade)
+  file            File           @relation(fields: [fileId], references: [id], onDelete: Cascade)
 
   @@unique([clientSessionId, fileId])
+}
+
+enum SelectionLabel {
+  MUST_HAVE
+  MAYBE
 }
 
 model Comment {

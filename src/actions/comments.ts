@@ -7,7 +7,10 @@ import { rateLimitAction } from "@/lib/action-rate-limit";
 
 export type AddCommentResult =
   | { ok: true; comment: { id: string; text: string; createdAt: string } }
-  | { ok: false; error: "rate_limited" | "unauthorized" | "not_found" | "empty" };
+  | {
+      ok: false;
+      error: "rate_limited" | "selection_closed" | "unauthorized" | "not_found" | "empty";
+    };
 
 export async function addComment(
   token: string,
@@ -30,6 +33,9 @@ export async function addComment(
   }
   const session = await prisma.clientSession.findUnique({ where: { id: claims.sid } });
   if (!session || session.shareLinkId !== link.id) return { ok: false, error: "unauthorized" };
+  if (session.selectionFinalizedAt || (link.selectionClosesAt && link.selectionClosesAt <= new Date())) {
+    return { ok: false, error: "selection_closed" };
+  }
 
   const file = await prisma.file.findUnique({ where: { id: fileId } });
   if (!file || file.galleryId !== link.galleryId || file.status !== "READY") {
@@ -38,6 +44,10 @@ export async function addComment(
 
   const comment = await prisma.comment.create({
     data: { fileId: file.id, clientSessionId: session.id, text: trimmed },
+  });
+  await prisma.clientSession.update({
+    where: { id: session.id },
+    data: { lastSeenAt: new Date() },
   });
   return {
     ok: true,

@@ -29,7 +29,8 @@ while the app is in Testing mode can expire unexpectedly.
 - Run database migrations during deploy: `npx prisma migrate deploy`.
 - Run preflight checks before shipping: `npm run check`.
 - Use rolling deploys when clients may be actively favoriting, commenting, or uploading.
-- Keep the same `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` on every instance in the deployment.
+- Set a stable `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` on every deployment instance so
+  active Server Actions remain valid throughout a rolling release.
 
 ## Scaling Notes
 

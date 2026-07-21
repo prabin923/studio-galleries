@@ -68,11 +68,11 @@ export default async function PublicGalleryPage({
     }),
     prisma.favorite.findMany({
       where: { clientSessionId: claims.sid },
-      select: { fileId: true },
+      select: { fileId: true, label: true },
     }),
     prisma.clientSession.findUnique({
       where: { id: claims.sid },
-      select: { displayName: true },
+      select: { displayName: true, selectionFinalizedAt: true },
     }),
     prisma.comment.findMany({
       where: { clientSessionId: claims.sid },
@@ -82,7 +82,7 @@ export default async function PublicGalleryPage({
   ]);
   if (!gallery) redirect(`/g/${token}/enter`);
 
-  const favoriteIds = new Set(favorites.map((f) => f.fileId));
+  const favoriteLabels = new Map(favorites.map((f) => [f.fileId, f.label]));
   const allowDownload = gallery.allowDownload && link.allowDownload;
 
   const commentsByFile: Record<string, { id: string; text: string; createdAt: string }[]> = {};
@@ -100,7 +100,8 @@ export default async function PublicGalleryPage({
     isVideo: f.mimeType.startsWith("video/"),
     thumbSrc: signedImagePath(f.id, "thumb"),
     webSrc: signedImagePath(f.id, "web"),
-    favorited: favoriteIds.has(f.id),
+    favorited: favoriteLabels.has(f.id),
+    selectionLabel: favoriteLabels.get(f.id) ?? null,
   }));
 
   const coverId =
@@ -118,10 +119,17 @@ export default async function PublicGalleryPage({
       coverSrc={coverId ? signedImagePath(coverId, "web") : null}
       items={items}
       selectionLimit={link.selectionLimit}
-      initialCount={favoriteIds.size}
+      initialCount={favorites.length}
       allowDownload={allowDownload}
       initialDisplayName={clientSession?.displayName ?? null}
       initialComments={commentsByFile}
+      selectionClosesAt={
+        link.selectionClosesAt ? link.selectionClosesAt.toISOString() : null
+      }
+      selectionIsClosed={
+        link.selectionClosesAt !== null && link.selectionClosesAt <= new Date()
+      }
+      initialSelectionFinalized={clientSession?.selectionFinalizedAt !== null}
     />
   );
 }
